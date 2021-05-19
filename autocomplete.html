@@ -80,7 +80,7 @@
         const ul = document.querySelector("ul");
 
         /*Inseri os li dentro da ul; retorna um array de strings*/ 
-        const monstraResultado = res => {
+        const mostraResultado = res => {
             ul.innerHTML = res.map(e => `<li>${e}</li>`).join('');
         }
         
@@ -108,7 +108,7 @@
                 );
             })
         )
-        .subscribe(monstraResultado);
+        .subscribe(mostraResultado);
     </script>
 </body>
 </html>
