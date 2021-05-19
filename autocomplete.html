@@ -70,40 +70,46 @@
     
     <div class="content">
         <input type="text" placeholder="Digite o País" class="content_style"/>
+        <!--Tudo que vai ser renderizado nesse autocomplete vai ser dentro dessa lista -->
         <ul></ul>
     </div>
 
     <script>
-        /*fromEvent: ; método ajax: forma que o rx faz as requisições */
+        /*fromEvent: vai funcionar como um método que retorna um observable; método ajax: forma que o rx faz as requisições, ele é um observable, of que foi usado para retornar um array vazio*/
         const {fromEvent, ajax: {ajax}, of} = rxjs;
+
         const {pluck, map, debounceTime, switchMap, catchError, distinctUntilChanged, startWith} = rxjs.operators;
     
         /*Ouvindo os eventos do tipo input, cada uma das teclas que a gente apertar*/
         const input = fromEvent(document.querySelector("input"), 'input');
-        /*Lista para inserir elementos e exibir os resultados*/
+        /*Pego a lista para inserir elementos e exibir os resultados*/
         const ul = document.querySelector("ul");
 
-        /*inseri os meus li dentro do ul; e=>.. retorna um array de strings, concatenando sem as vírgulas*/
+        /* essa função inseri os meus li dentro do ul; e=>.. retorna um array de strings, concatenando sem as vírgulas*/
         const monstraResultado = res => {
             ul.innerHTML = res.map(e => `<li>${e}</li>`).join('');
         }
         
         /*Método buscaPaises: retorna uma requisição e extrai o response, de um array de objetos para um array de strings com os nomes dos países*/
-        /*pluck: pega um objeto e extrai uma propriedade daquele objeto*/
+        /*O valor que vim desse observable (ajax) é um objeto e tem uma propriedade response onde nela ele vai ter o dado real que eu quero, então eu vou extrair esses dados dentro de response*/
+        /*pluck: pega um objeto e extrai uma propriedade daquele objeto*/   
         const buscaPaises = termo => ajax(`https://restcountries.eu/rest/v2/name/${termo}?fields=name`).pipe(pluck('response'),
-        /*array de paises, com a propriedade name, retornando só o array de nomes de países */
+        /*o map vai servir para pegar só o nome desse país
+        /*array de paises que são objetos, com a propriedade name, retornando só o array de nomes de países */
         map(resposta => resposta.map(e => e.name))
         )
 
+        //inicia as transformações quando o usuário digita
         input.pipe(
-            /*tempo de espera para o fluxo de eventos*/
+            /*tempo de espera para ele mostrar um valor*/
             debounceTime(300),
+            /*será retornado target e eu converti para value*/
             pluck('target', 'value'),
             /*limpa todos os espaços*/
             map(e => e.trim()),
             /*evita que seja processado uma mesma busca com o mesmo país buscado anteriormente*/
             distinctUntilChanged(),
-            /*quando o termo chegar eu faço a busca na api quando eu digitar a partir de 3 caracteres*/
+            /* vai dar prioridade a nova requisição ignorando a anterior se o usuário apagar. quando o termo (texto) chegar eu faço a busca na api quando eu digitar a partir de 3 caracteres*/
             switchMap(termo => {
                 if (!termo || termo.length < 3) return of([])
                 return buscaPaises(termo);
@@ -117,6 +123,7 @@
                 );
             })
         )
+        //aqui no final eu pego os dados, os nomes dos países para mostrar eles
         .subscribe(monstraResultado);
     </script>
 </body>
