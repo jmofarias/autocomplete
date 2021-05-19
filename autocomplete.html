@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!--Importação do RxJS-->
+    <script src="https://unpkg.com/@reactivex/rxjs@6.3.3/dist/global/rxjs.umd.js"></script>
+    <title>Projeto PLP</title>
+    <style>
+        .content {
+        position: relative;
+        padding: 15px 0 0;
+        margin-top: 10px;
+        width: 50%;
+        }
+
+        .content_style {
+            font-family: inherit;
+            width: 100%;
+            border: 0;
+            border-bottom: 2px solid gray;
+            outline: 0;
+            font-size: 1.3rem;
+            color: gray;
+            padding: 7px 0;
+            background: transparent;
+            transition: border-color 0.2s;
+        }
+
+        ::placeholder {
+        color: gray;
+        }
+
+        :placeholder-shown ~ .form__label {
+        font-size: 1.3rem;
+        cursor: text;
+        top: 20px;
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif; 
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-size: 1.5rem;
+            background-color:#222222;
+        }
+
+        ul {
+            list-style-type: none;
+            margin: 0;
+            padding: 0;
+            box-shadow: 20px 1px;
+            max-height: 50%;
+            overflow: auto;
+        }
+
+        li {
+            
+            padding: 16px;
+            cursor: pointer;
+        }
+    </style>
+
+</head>
+<body>
+    
+    <div class="content">
+        <input type="text" placeholder="Digite o País" class="content_style"/>
+        <ul></ul>
+    </div>
+
+    <script>
+        /*fromEvent: ; método ajax: forma que o rx faz as requisições */
+        const {fromEvent, ajax: {ajax}, of} = rxjs;
+        const {pluck, map, debounceTime, switchMap, catchError, distinctUntilChanged, startWith} = rxjs.operators;
+    
+        /*Ouvindo os eventos do tipo input, cada uma das teclas que a gente apertar*/
+        const input = fromEvent(document.querySelector("input"), 'input');
+        /*Lista para inserir elementos e exibir os resultados*/
+        const ul = document.querySelector("ul");
+
+        /*inseri os meus li dentro do ul; e=>.. retorna um array de strings, concatenando sem as vírgulas*/
+        const monstraResultado = res => {
+            ul.innerHTML = res.map(e => `<li>${e}</li>`).join('');
+        }
+        
+        /*Método buscaPaises: retorna uma requisição e extrai o response, de um array de objetos para um array de strings com os nomes dos países*/
+        /*pluck: pega um objeto e extrai uma propriedade daquele objeto*/
+        const buscaPaises = termo => ajax(`https://restcountries.eu/rest/v2/name/${termo}?fields=name`).pipe(pluck('response'),
+        /*array de paises, com a propriedade name, retornando só o array de nomes de países */
+        map(resposta => resposta.map(e => e.name))
+        )
+
+        input.pipe(
+            /*tempo de espera para o fluxo de eventos*/
+            debounceTime(300),
+            pluck('target', 'value'),
+            /*limpa todos os espaços*/
+            map(e => e.trim()),
+            /*evita que seja processado uma mesma busca com o mesmo país buscado anteriormente*/
+            distinctUntilChanged(),
+            /*quando o termo chegar eu faço a busca na api quando eu digitar a partir de 3 caracteres*/
+            switchMap(termo => {
+                if (!termo || termo.length < 3) return of([])
+                return buscaPaises(termo);
+            }),
+            /*para quando apagar o que foi digitado será feito uma limpeza e uma nova busca será iniciada*/
+            catchError((err, source) => {
+                console.error(err);
+                return source.pipe(
+                    /*faz uma limpeza quando é digitado algo que não tenha na lista dos países*/
+                    startWith([])
+                );
+            })
+        )
+        .subscribe(monstraResultado);
+    </script>
+</body>
+</html>
